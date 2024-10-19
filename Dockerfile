@@ -2,13 +2,16 @@ FROM node:18
 
 WORKDIR /usr/src/app
 
-COPY package*.json ./
+# Dev
+# COPY package*.json ./
 
-# Only use this
-RUN npm install
+# RUN npm install
 
-#COPY . .
+# CMD [ "node", "index.js" ]
 
-#EXPOSE 3000
+# Production, once build
+COPY . .
 
-CMD [ "node", "index.js" ]
+RUN chmod +x start.sh
+
+CMD [ "/bin/bash", "./start.sh" ]
