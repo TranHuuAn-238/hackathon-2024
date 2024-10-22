@@ -1,5 +1,5 @@
 const io = require('socket.io-client');
-const { randomMove } = require('./bot/strategy');
+const { randomMove, calculateDistance } = require('./bot/strategy');
 
 // Config socket
 const SOCKET_SERVER_ADDR = process.env.SOCKET_SERVER || 'wss://your-socket-server.com:port';
@@ -26,6 +26,12 @@ socket.on('user', (data) => {
     // const map = data.map;
     // const tank = data.tanks;
     const directions = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
+    const oppositeDirections = {
+        UP: 'DOWN',
+        DOWN: 'UP',
+        LEFT: 'RIGHT',
+        RIGHT: 'LEFT'
+    };
     let previousPosition = { x: null, y: null };
     let moveInterval;
     let currentDirection = randomMove(directions);
@@ -66,9 +72,25 @@ socket.on('user', (data) => {
             previousPosition = { x: data.x, y: data.y };
         }
     });
+    socket.on('new_bullet', (bulletData) => {
+        const bulletX = bulletData.x;
+        const bulletY = bulletData.y;
+        const bulletDirection = bulletData.orient;
+    
+        // Check if the bullet is moving towards the Sr0m
+        const distanceBefore = calculateDistance(previousPosition.x, previousPosition.y, bulletX, bulletY);
+        const distanceAfter = calculateDistance(previousPosition.x + (currentDirection === 'RIGHT' ? 9 : currentDirection === 'LEFT' ? -9 : 0), 
+                                                previousPosition.y + (currentDirection === 'DOWN' ? 9 : currentDirection === 'UP' ? -9 : 0), 
+                                                bulletX, bulletY);
+    
+        // If the bullet is moving closer and its direction is opposite to the bot's current direction, change direction
+        if (oppositeDirections[currentDirection] === bulletDirection && distanceAfter < distanceBefore) {
+            changeDirection();
+        }
+    });
 
     // Start move
-    setInterval(changeDirection, 1000);
+    setInterval(changeDirection, 1500);
 
     // Shoot
     setInterval(() => {
