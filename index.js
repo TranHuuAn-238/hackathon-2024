@@ -7,6 +7,7 @@ const TOKEN = process.env.TOKEN || 'your_token_here';
 
 // Const
 const tankName = 'Sr0m';
+let myUID = null;
 
 // Create socket connect
 const socket = io(SOCKET_SERVER_ADDR, {
@@ -24,7 +25,7 @@ socket.on('connect', () => {
 
 socket.on('user', (data) => {
     // const map = data.map;
-    // const tank = data.tanks;
+    const tanks = data.tanks;
     const directions = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
     const oppositeDirections = {
         UP: 'DOWN',
@@ -35,6 +36,14 @@ socket.on('user', (data) => {
     let previousPosition = { x: null, y: null };
     let moveInterval;
     let currentDirection = randomMove(directions);
+
+    tanks.forEach((tank) => {
+        if (tank.name === tankName) {
+            myUID = tank.uid;
+            previousPosition = { x: tank.x, y: tank.y };
+            // console.log(tank.size);
+        }
+    });
 
     function emitMove(direction) {
         socket.emit('move', { orient: direction });
@@ -76,15 +85,24 @@ socket.on('user', (data) => {
         const bulletX = bulletData.x;
         const bulletY = bulletData.y;
         const bulletDirection = bulletData.orient;
+        const bulletOwner = bulletData.uid;
     
         // Check if the bullet is moving towards the Sr0m
         const distanceBefore = calculateDistance(previousPosition.x, previousPosition.y, bulletX, bulletY);
         const distanceAfter = calculateDistance(previousPosition.x + (currentDirection === 'RIGHT' ? 9 : currentDirection === 'LEFT' ? -9 : 0), 
                                                 previousPosition.y + (currentDirection === 'DOWN' ? 9 : currentDirection === 'UP' ? -9 : 0), 
                                                 bulletX, bulletY);
-    
-        // If the bullet is moving closer and its direction is opposite to the bot's current direction, change direction
-        if (oppositeDirections[currentDirection] === bulletDirection && distanceAfter < distanceBefore) {
+        const isAligned = (
+            (bulletData.x >= previousPosition.x - 13 && bulletData.x <= previousPosition.x + 13) ||
+            (bulletData.y >= previousPosition.y - 13 && bulletData.y <= previousPosition.y + 13)
+        );
+
+        // Check bullet direction with same direction or oppsite direction to Sr0m
+        if (distanceAfter < distanceBefore &&
+            isAligned &&
+            (oppositeDirections[currentDirection] === bulletDirection || bulletOwner !== myUID)
+        ) {
+            // console.log(bulletData.size);
             changeDirection();
         }
     });
